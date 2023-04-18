@@ -11,13 +11,21 @@
 #include <vector>
 #include <cstdlib>
 #include <ctime>
+#include <chrono>
 #include <SFML/Graphics.hpp>
 #include <algorithm>
 #include <map>
 #include <iostream>
 #include <fstream>
+
+#include <iomanip>
 using namespace std;
 using namespace sf;
+using namespace std::chrono;
+
+
+
+
 
 class Controller
 {
@@ -68,43 +76,19 @@ Controller::Controller()
     srand(time(NULL));
     flagsavailable = 50;
 
-    fstream file;
-    string lineholder;
-    file.open("boards/testboard.brd");
-    if (file.is_open())
-    {
-        while (getline(file, lineholder))
-        {
-            auto iter = lineholder.begin();
-            while (iter != lineholder.end())
-            {
-                int holder = (*iter) - 48;
-                testcase1.push_back(holder);
-                iter++;
-            }
-        }
-    }
-    file.close();
-
-    file.open("boards/testboard2.brd");
-    if (file.is_open())
-    {
-        while (getline(file, lineholder))
-        {
-            auto iter = lineholder.begin();
-            while (iter != lineholder.end())
-            {
-                int holder = (*iter) - 48;
-                testcase2.push_back(holder);
-                iter++;
-            }
-        }
-    }
-    file.close();
-
     Texture holder;
     holder.loadFromFile("images/debug.png"); //console buttons
     icontextures.emplace("debug", holder);
+
+    holder.loadFromFile("images/leaderboard.png"); //leaderboard button
+    icontextures.emplace("leaderboard", holder);
+
+    holder.loadFromFile("images/play.png"); //play button
+    icontextures.emplace("play", holder);
+
+    holder.loadFromFile("images/pause.png"); //pause button
+    icontextures.emplace("pause", holder);
+
 
 
     holder.loadFromFile("images/digits.png"); //digits

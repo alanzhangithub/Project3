@@ -1,6 +1,7 @@
 #include <SFML/Graphics.hpp>
 #include <string>
 #include <vector>
+#include <fstream>
 #include <cctype>
 #include "Tile.h"
 #include "Functions.h"
@@ -10,6 +11,7 @@ using namespace std;
 enum GameState {
     WELCOME_SCREEN,
     PLAYING,
+    LEADERBOARD,
 };
 
 void setText(sf::Text &text, float x, float y) {
@@ -72,7 +74,7 @@ int main() {
                     if (std::isalpha(event.text.unicode) &&
                         playerName.length() < 10) {
                         char enteredChar = static_cast<char>(event.text.unicode);
-                        playerName += (playerName.empty()) ? std::toupper(enteredChar) : std::tolower(enteredChar);
+                        playerName += enteredChar;
                         inputText.setString(playerName + "|");
                         setText(inputText, window.getSize().x / 2.0f, window.getSize().y / 2.0f - 45);
                     }
@@ -84,6 +86,17 @@ int main() {
                         inputText.setString(playerName + "|");
                         setText(inputText, window.getSize().x / 2.0f, window.getSize().y / 2.0f - 45);
                     } else if (event.key.code == sf::Keyboard::Enter && !playerName.empty()) {
+                        playerName[0] = std::toupper(playerName[0]);
+                        for (size_t i = 1; i < playerName.length(); ++i) {
+                            playerName[i] = std::tolower(playerName[i]);
+                        }
+
+                        // Save the formatted player name to the "leaderboards.txt" file
+                        std::ofstream leaderboardFile;
+                        leaderboardFile.open("leaderboard.txt", std::ios_base::app); // Open the file in append mode
+                        leaderboardFile << playerName << std::endl; // Write the player name followed by a newline
+                        leaderboardFile.close(); // Close the file
+
                         currentState = PLAYING;
                     }
                 }
