@@ -4,7 +4,7 @@ project(Project3)
 set(CMAKE_CXX_STANDARD 17)
 include_directories("C:/SFML/include")
 
-add_executable(Project3 main.cpp Functions.h Tile.h)
+add_executable(Project3 main.cpp TextureManager.h Tile.h Board.h WelcomeWindow.h LeaderboardWindow.h)
 
 set(SFML_STATIC_LIBRARIES TRUE)
 set(SFML_DIR C:/SFML/lib/cmake/SFML)
