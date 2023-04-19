@@ -1,9 +1,8 @@
-class WelcomeWindow {
-public:
-    WelcomeWindow();
+//
+// Created by Alan on 4/18/2023.
+//
 
-    // Show the Welcome window and handle user input
-    void show();
+#ifndef PROJECT3_WELCOMEWINDOW_H
+#define PROJECT3_WELCOMEWINDOW_H
 
-    // Other Welcome window-related functions
-};
+#endif //PROJECT3_WELCOMEWINDOW_H
