@@ -1,6 +1,5 @@
-//
-// Created by Alan on 4/11/2023.
-//
+#pragma clang diagnostic push
+#pragma ide diagnostic ignored "cert-msc50-cpp"
 
 #pragma once
 #include "Tile.h"
@@ -13,49 +12,28 @@
 #include <map>
 #include <iostream>
 #include <fstream>
-
 #include <iomanip>
+#include <unordered_set>
+#include "LeaderboardWindow.h"
 using namespace std;
 using namespace sf;
 using namespace std::chrono;
 
-
 class TextureManager {
-    int flagsavailable;
-    int tilesrevealed;
-    int columns, rows, mines;
-    int tile_count;
-    int minesLeft;
-
-
-
-    std::map<std::string, sf::Texture> icontextures;
-    vector<bool> tileids;
-
-
-    Sprite debug_icon;
-
-    Sprite smiley;
-    Sprite leaderboard;
-    Sprite pause;
-    Sprite play;
-
-    Sprite hundreds;
-    Sprite tens;
-    Sprite ones;
-    sf::Sprite timerMinutesTens;
-    sf::Sprite timerMinutesOnes;
-    sf::Sprite timerSecondsTens;
-    sf::Sprite timerSecondsOnes;
-    bool game_lose{};
-    bool game_over{};
-
-
+    int flags_available, tiles_revealed{}, columns{}, rows{}, mines{}, tile_count{}, minesLeft, configMines{};
+    std::map<std::string, sf::Texture> icon_textures;
+    vector<bool> tile_id;
+    Sprite debug_icon, smiley, leaderboard, pause, play, hundreds, tens, ones;
+    Sprite timerMinutesTens, timerMinutesOnes, timerSecondsTens, timerSecondsOnes;
+    bool game_lose{}, game_over{};
+    bool playerWon;
 public:
+    sf::Time elapsedTime;
+    bool isPaused = false;
     int initialMinesLeft = mines;
     vector<Tile> tiles;
     TextureManager();
-    void RandomTileIds();
+    void initialize_mines();
     void MakeTiles();
     void setBombStates();
     void setIcons();
@@ -65,28 +43,27 @@ public:
     void refreshCounter();
     void refreshSmiley();
     void load_board_config();
-    int width{};
-    int height{};
+    int width{}, height{};
     bool rightMouseButtonPressed;
     bool leftButtonClicked;
-    sf::Clock gameClock;
-    int currentTime;
-
+    Clock gameClock;
+    int currentTime{};
     void updateTimer();
+    void resetTimer();
+    void pauseGame();
 };
-
 
 TextureManager::TextureManager()
 {
+    elapsedTime = sf::Time::Zero;
     leftButtonClicked = false;
     rightMouseButtonPressed = false;
     load_board_config();
-    flagsavailable = mines;
-    minesLeft = mines;
+    flags_available = configMines;
+    minesLeft = configMines;
+    initialMinesLeft = configMines;
+    playerWon = false;
 
-
-
-    load_board_config();
     std::map<std::string, std::string> TEXTURE_FILES = {
             {"debug", "images/debug.png"},
             {"leaderboard", "images/leaderboard.png"},
@@ -112,46 +89,37 @@ TextureManager::TextureManager()
 
     for (const auto& [name, file] : TEXTURE_FILES) {
         sf::Texture texture;
-        icontextures.emplace(name, texture);
-        icontextures[name].loadFromFile(file);
+        icon_textures.emplace(name, texture);
+        icon_textures[name].loadFromFile(file);
     }
 
-    debug_icon.setTexture(icontextures["debug"]);
+    debug_icon.setTexture(icon_textures["debug"]);
     debug_icon.setPosition((columns * 32) - 304, 32 * (rows + 0.5f));
-    smiley.setTexture(icontextures["happy"]);
+    smiley.setTexture(icon_textures["happy"]);
     smiley.setPosition(((columns / 2.0) * 32) - 32, 32 * (rows + 0.5f));
-    pause.setTexture(icontextures["pause"]);
+    pause.setTexture(icon_textures["pause"]);
     pause.setPosition((columns * 32) - 240, 32 * (rows + 0.5f));
-    leaderboard.setTexture(icontextures["leaderboard"]);
+    leaderboard.setTexture(icon_textures["leaderboard"]);
     leaderboard.setPosition((columns * 32) - 176, 32 * (rows + 0.5f));
-
-    hundreds.setTexture(icontextures["digits"]);
+    hundreds.setTexture(icon_textures["digits"]);
     hundreds.setTextureRect(sf::IntRect(0, 0, 21, 32));
     hundreds.setPosition(33, 32 * ((rows) + 0.5f) + 16);
-    tens.setTexture(icontextures["digits"]);
+    tens.setTexture(icon_textures["digits"]);
     tens.setTextureRect(sf::IntRect(21 * 5, 0, 21, 32));
     tens.setPosition(54, 32 * ((rows) + 0.5f) + 16);
-    ones.setTexture(icontextures["digits"]);
+    ones.setTexture(icon_textures["digits"]);
     ones.setTextureRect(sf::IntRect(0, 0, 21, 32));
     ones.setPosition(75, 32 * ((rows) + 0.5f) + 16);
-
-    timerMinutesTens.setTexture(icontextures["digits"]);
+    timerMinutesTens.setTexture(icon_textures["digits"]);
     timerMinutesTens.setPosition((columns * 32) - 97, 32 * (rows + 0.5f) + 16);
-
-
-    timerMinutesOnes.setTexture(icontextures["digits"]);
+    timerMinutesOnes.setTexture(icon_textures["digits"]);
     timerMinutesOnes.setPosition((columns * 32) - 97 + 21, 32 * (rows + 0.5f) + 16);
-
-    timerSecondsTens.setTexture(icontextures["digits"]);
+    timerSecondsTens.setTexture(icon_textures["digits"]);
     timerSecondsTens.setPosition((columns * 32) - 54, 32 * (rows + 0.5f) + 16);
-
-    timerSecondsOnes.setTexture(icontextures["digits"]);
+    timerSecondsOnes.setTexture(icon_textures["digits"]);
     timerSecondsOnes.setPosition((columns * 32) - 54 + 21, 32 * (rows + 0.5f) + 16);
-
-
-
     MakeTiles();
-    RandomTileIds();
+    initialize_mines();
     refreshCounter();
 
 }
@@ -160,6 +128,9 @@ void TextureManager::load_board_config() {
     std::ifstream config_file("board_config.cfg");
     if (config_file.is_open()) {
         config_file >> columns >> rows >> mines;
+        cout << "Columns: " << columns << ", Rows: " << rows << ", Mines: " << mines << endl;
+        configMines = mines;
+
 
         width = columns * 32;
         height = (rows * 32) + 100;
@@ -173,51 +144,33 @@ void TextureManager::load_board_config() {
 
 
 
-void TextureManager::RandomTileIds()
-{
-    tileids.clear();
-    vector<int> bits;
-    int randomnum;
-    bool getfree = false;
-    minesLeft = mines;
+void TextureManager::initialize_mines() {
+    gameClock.restart();
+    currentTime = 0;
+    tile_id.clear();
+    unordered_set<int> mine_positions;
+    minesLeft = configMines;
 
-    for (int c = 0; c < mines; c++)
-    {
-        while (!getfree)
-        {
-            randomnum = rand() % tile_count;
-            if (find(bits.begin(), bits.end(), randomnum) == bits.end())
-            {
-                bits.push_back(randomnum);
-                getfree = true;
-            }
-        }
-        getfree = false;
+    // Place mines in random positions
+    while (mine_positions.size() < mines) {
+        int random_position = rand() % tile_count;
+        mine_positions.insert(random_position);
     }
 
-    auto iter = bits.begin();
-    for (int d = 0; d < tile_count; d++)
-    {
-        iter = find(bits.begin(), bits.end(), d);
-        if (iter == bits.end())
-        {
-            tileids.push_back(false);
-        }
-        else
-        {
-            tileids.push_back(true);
-        }
+    for (int i = 0; i < tile_count; ++i) {
+        tile_id.push_back(mine_positions.count(i) > 0);
     }
 
     setBombStates();
     setIcons();
-    flagsavailable = mines; // initialize flagsavailable with the number of mines
+    flags_available = mines; // initialize flags_available with the number of mines
     refreshCounter();
-    tilesrevealed = 0;
+    tiles_revealed = 0;
 
     game_lose = false;
     game_over = false;
 }
+
 
 
 
@@ -233,7 +186,7 @@ void TextureManager::MakeTiles()
     {
         for (int d = 0; d < columns; d++)
         {
-            Tile t = Tile(icontextures, x, y);
+            Tile t = Tile(icon_textures, x, y);
             tiles.push_back(t);
             x += 32.f;
         }
@@ -242,17 +195,15 @@ void TextureManager::MakeTiles()
     }
 }
 
-//calls setbombstate on each tile in tiles
-//for use ONLY when the game is reset, otherwise you'll just make a big mess
+
 void TextureManager::setBombStates()
 {
     for (int c = 0; c < tile_count; c++)
     {
-        tiles[c].setBombState(tileids[c]);
+        tiles[c].setBombState(tile_id[c]);
     }
 }
 
-//assigns icons to each tile based on isbomb and nearby bombs
 void TextureManager::setIcons()
 {
     for (int c = 0; c < tile_count; c++)
@@ -329,7 +280,7 @@ void TextureManager::setIcons()
             tiles[c].neighbors[1] = &(tiles[c - columns]);
             tiles[c].neighbors[0] = &(tiles[c - columns - 1]);
         }
-        tiles[c].updateIcon(icontextures);
+        tiles[c].updateIcon(icon_textures);
     }
 }
 
@@ -339,14 +290,39 @@ void TextureManager::update(RenderWindow &window)
 {
     Vector2i position = Mouse::getPosition(window);
 
-    int debugButtonX = (columns * 32) - 304;
-    int debugButtonY = 32 * (rows + 0.5f);
-    int happyFaceX = ((columns / 2.0) * 32) - 32;
-    int happyFaceY = 32 * (rows + 0.5f);
-    int pausePlayButtonX = (columns * 32) - 240;
-    int pausePlayButtonY = 32 * (rows + 0.5f);
-    int leaderboardButtonX = (columns * 32) - 176;
-    int leaderboardButtonY = 32 * (rows + 0.5f);
+    // Assuming happyFaceSprite is an instance of sf::Sprite
+    sf::IntRect rect = smiley.getTextureRect();
+    int happyFaceWidth = rect.width;
+    int happyFaceHeight = rect.height;
+
+// Calculate the position of the happy face button
+
+
+
+    sf::IntRect debugRect = debug_icon.getTextureRect();
+    int debugWidth = debugRect.width;
+    int debugHeight = debugRect.height;
+
+    sf::IntRect pausePlayRect = pause.getTextureRect();
+    int pausePlayWidth = pausePlayRect.width;
+    int pausePlayHeight = pausePlayRect.height;
+
+    sf::IntRect leaderboardRect = leaderboard.getTextureRect();
+    int leaderboardWidth = leaderboardRect.width;
+    int leaderboardHeight = leaderboardRect.height;
+
+// Calculate the positions of the buttons
+    float happyFaceX = ((static_cast<float>(columns) / 2.0) * 32) - 32;
+    float happyFaceY = 32 * (static_cast<float>(rows) + 0.5f);
+
+    float debugX = (static_cast<float>(columns) * 32) - 304;
+    float debugY = 32 * (static_cast<float>(rows) + 0.5f);
+
+    float pausePlayX = (static_cast<float>(columns) * 32) - 240;
+    float pausePlayY = 32 * (static_cast<float>(rows) + 0.5f);
+
+    float leaderboardX = (static_cast<float>(columns) * 32) - 176;
+    float leaderboardY = 32 * (static_cast<float>(rows) + 0.5f);
 
     if (Mouse::isButtonPressed(Mouse::Left))
     {
@@ -354,55 +330,64 @@ void TextureManager::update(RenderWindow &window)
         {
             leftButtonClicked = true;
 
-            if (position.y >= 0 && position.y < 512 && !game_over)
+            if (position.x >= happyFaceX && position.x <= (happyFaceX + happyFaceWidth) &&
+                position.y >= happyFaceY && position.y <= (happyFaceY + happyFaceHeight))
             {
+                cout << "happy face button clicked" << endl;
+                resetTimer();
+                initialize_mines();
+            }
+            else if (position.x >= debugX && position.x <= (debugX + debugWidth) &&
+                     position.y >= debugY && position.y <= (debugY + debugHeight))
+            {
+                debug();
+                cout << "debug button clicked" << endl;
+            }
+            else if (position.y >= pausePlayY && position.x >= pausePlayX && position.x <= pausePlayX + pausePlayWidth && position.y <= pausePlayY + pausePlayHeight)
+            {
+                // Only allow pausing/resuming if the game is not over
+                if (!game_over && !game_lose) {
+                    pauseGame();
+                    pause.setTexture(icon_textures[isPaused ? "play" : "pause"]);
+                }
+            }
+            else if (position.x >= leaderboardX && position.x <= (leaderboardX + leaderboardWidth) &&
+                     position.y >= leaderboardY && position.y <= (leaderboardY + leaderboardHeight))
+            {
+                cout << "leaderboard button clicked" << endl;
+                LeaderboardWindow leaderboardWindow(false, "", "");
+                leaderboardWindow.run();
+            }
+
+                // Only process tile clicks if the game is not paused
+            else if (!isPaused && position.y >= 0 && position.y < height - 100 && !game_over)
+            {
+                cout << "grid clicked" << endl;
                 int x = (position.x / 32);
                 int y = (position.y / 32);
 
-                int pos = (y * columns) + x;
+                int pos = y * columns + x;
                 int count = 0;
-                if (tiles[pos].reveal(count))
-                {
+                if (tiles[pos].reveal(count)) {
                     game_lose = true;
                     game_over = true;
                     int dummycount = 0;
-                    for (int c = 0; c < tile_count; c++)
-                    {
+                    for (int c = 0; c < tile_count; c++) {
                         if (tiles[c].isflagged && tiles[c].isbomb)
                             tiles[c].toggleFlag();
                         if (tiles[c].isbomb)
                             tiles[c].reveal(dummycount);
                     }
+                    resetTimer(); // Reset the timer when the game is over or lost
                 }
-                else tilesrevealed += count;
-            }
-            else if (position.y >= 512 && position.y < 576)
-            {
-                // Happy face button
-                if (position.x >= happyFaceX && position.x < happyFaceX + 64 &&
-                    position.y >= happyFaceY && position.y < happyFaceY + 64)
-                {
-                    RandomTileIds();
+                else tiles_revealed += count;
+                if (tiles_revealed + mines == tile_count) {
+                    game_over = true;
+                    playerWon = true;
+                    game_lose = false; // Set playerWon to true to indicate the player has won
+                    // Perform any additional actions required when the player wins, e.g., displaying a win message or stopping the timer
                 }
-                    // Debug button
-                else if (position.x >= debugButtonX && position.x < debugButtonX + 64 &&
-                         position.y >= debugButtonY && position.y < debugButtonY + 64 &&
-                         !game_over)
-                {
-                    debug();
-                }
-                    // Pause/Play button
-                else if (position.x >= pausePlayButtonX && position.x < pausePlayButtonX + 64 &&
-                         position.y >= pausePlayButtonY && position.y < pausePlayButtonY + 64)
-                {
-                    // Implement play/pause functionality
-                }
-                    // Leaderboard button
-                else if (position.x >= leaderboardButtonX && position.x < leaderboardButtonX + 64 &&
-                         position.y >= leaderboardButtonY && position.y < leaderboardButtonY + 64)
-                {
-                    // Implement leaderboard functionality
-                }
+
             }
         }
     }
@@ -413,37 +398,33 @@ void TextureManager::update(RenderWindow &window)
 
 
     if (Mouse::isButtonPressed(Mouse::Right)) {
-        if (!rightMouseButtonPressed && !game_over) {
+        if (!rightMouseButtonPressed && !game_over && !isPaused) { // Only process right-clicks if the game is not paused
             rightMouseButtonPressed = true;
 
-            Vector2i position = Mouse::getPosition(window);
-            if (position.x >= 0 && position.x <= 800) {
-                if (position.y >= 0 && position.y <= 512) {
-                    int x = (position.x / 32);
-                    int y = (position.y / 32);
+            if (position.y >= 0 && position.y < height - 100 && !game_over){
+                int x = (position.x / 32);
+                int y = (position.y / 32);
 
-                    int pos = (y * columns) + x;
-                    refreshCounter();
-                    if (!tiles[pos].isflagged && !tiles[pos].isrevealed) {
-                        tiles[pos].toggleFlag();
-                        flagsavailable--;
-                        minesLeft--;
-                        cout << "minesLeft after placing flag: " << minesLeft << endl;
+                int pos = (y * columns) + x;
+                refreshCounter();
+                if (!tiles[pos].isflagged && !tiles[pos].isrevealed) {
+                    tiles[pos].toggleFlag();
+                    flags_available--;
+                    minesLeft--;
 
-                    } else if (!tiles[pos].isrevealed && tiles[pos].isflagged) { // Added the minesLeft != -1 check
-                        tiles[pos].toggleFlag();
-                        flagsavailable++;
-                        minesLeft++;
-                        cout << "minesLeft after removing flag: " << minesLeft << endl;
-                    }
+                } else if (!tiles[pos].isrevealed && tiles[pos].isflagged) { // Added the minesLeft != -1 check
+                    tiles[pos].toggleFlag();
+                    flags_available++;
+                    minesLeft++;
                 }
+
             }
         }
     } else {
         rightMouseButtonPressed = false;
     }
 
-    if (tilesrevealed == (tile_count - mines) && !game_lose) {
+    if (tiles_revealed == (tile_count - mines) && !game_lose) {
         game_over = true;
         for (int e = 0; e < tile_count; e++) {
             if (tiles[e].isbomb && !tiles[e].isflagged) {
@@ -457,15 +438,18 @@ void TextureManager::update(RenderWindow &window)
     draw(window);
 }
 
-//calls toggleDebug on each tile
 void TextureManager::debug()
 {
+    cout << "Before setting minesLeft: " << minesLeft << endl;
     minesLeft = initialMinesLeft;
+    cout << "After setting minesLeft: " << minesLeft << endl;
+
     for (int c = 0; c < tile_count; c++)
     {
         tiles[c].toggleDebug();
     }
 }
+
 
 //calls draw on each tile in tiles
 void TextureManager::draw(RenderWindow &window)
@@ -520,21 +504,71 @@ void TextureManager::refreshSmiley()
     if (game_over)
     {
         if (game_lose)
-            smiley.setTexture(icontextures["lose"]);
+        {
+            smiley.setTexture(icon_textures["lose"]);
+        }
         else
-            smiley.setTexture(icontextures["win"]);
+        {
+            smiley.setTexture(icon_textures["win"]);
+            playerWon = true; // Update playerWon when the player wins
+        }
     }
-    else smiley.setTexture(icontextures["happy"]);
+    else
+    {
+        smiley.setTexture(icon_textures["happy"]);
+    }
 }
 
+
+void TextureManager::resetTimer() {
+    elapsedTime = sf::Time::Zero;
+    gameClock.restart();
+    currentTime = 0;
+}
+void TextureManager::pauseGame() {
+    if (!isPaused) {
+        isPaused = true;
+        elapsedTime += gameClock.getElapsedTime();
+        // Iterate over each tile
+        for (int i = 0; i < tiles.size(); i++) {
+            if (!tiles[i].isrevealed) {
+                tiles[i].revealTile();
+            }
+            tiles[i].icon.setColor(Color(255, 255, 255, 0));
+        }
+    } else {
+        isPaused = false;
+        gameClock.restart();
+        // Revert change texture here
+        for (int i = 0; i < tiles.size(); i++) {
+            if (!tiles[i].isrevealed) {
+                tiles[i].hideTile();
+            }
+            if (tiles[i].isrevealed && !tiles[i].isbomb) {
+                tiles[i].icon.setColor(Color(255, 255, 255, 255));
+            }
+        }
+    }
+}
+
+
+
+
+
+
+
 void TextureManager::updateTimer() {
-    // Get elapsed time in seconds
-    currentTime = static_cast<int>(gameClock.getElapsedTime().asSeconds());
+    if (!isPaused && !(game_over || game_lose)) {
+        // Get elapsed time in seconds
+        currentTime = static_cast<int>((gameClock.getElapsedTime() + elapsedTime).asSeconds());
+    }
+
+    // ... the rest of the function remains unchanged
+
 
     // Calculate the digits to display
     int minutes = currentTime / 60;
     int seconds = currentTime % 60;
-
     // Calculate the digits for the timer
     int minutesTensDigit = minutes / 10;
     int minutesOnesDigit = minutes % 10;
@@ -547,3 +581,6 @@ void TextureManager::updateTimer() {
     timerSecondsTens.setTextureRect(sf::IntRect(21 * secondsTensDigit, 0, 21, 32));
     timerSecondsOnes.setTextureRect(sf::IntRect(21 * secondsOnesDigit, 0, 21, 32));
 }
+
+
+#pragma clang diagnostic pop

@@ -2,19 +2,21 @@
 #include <SFML/Graphics.hpp>
 #include <string>
 #include <map>
+#include "TextureManager.h"
 using namespace sf;
 using namespace std;
 
 class Tile {
     Sprite background;
     Sprite foreground;
-    Sprite icon;
     Sprite flagicon;
+    Sprite tile;
     bool isdebug;
-
     void setIconTexture(map<string, Texture> &textures);
 
 public:
+    Sprite icon;
+    Sprite revealed, hidden;
     vector<Tile*> neighbors;
     int numbombs;
     bool isbomb;
@@ -29,6 +31,11 @@ public:
     void toggleDebug();
     bool reveal(int &counter);
     void draw(RenderWindow &w);
+    void setTexture(const sf::Texture& texture);
+
+    void hideTile();
+
+    void revealTile();
 };
 
 Tile::Tile(map<string, Texture> &textures, float x_coordinate, float y_coordinate) {
@@ -40,12 +47,17 @@ Tile::Tile(map<string, Texture> &textures, float x_coordinate, float y_coordinat
     background.setTexture(textures["revealed"]);
     foreground.setTexture(textures["hidden"]);
     flagicon.setTexture(textures["flag"]);
+    revealed.setTexture(textures["revealed"]);
+    hidden.setTexture(textures["hidden"]);
+
+
 
     flagicon.setColor(Color(255, 255, 255, 0));
     isbomb = false;
     isrevealed = false;
     isflagged = false;
     isdebug = false;
+
 }
 
 void Tile::setBombState(bool bombstate) {
@@ -115,3 +127,18 @@ void Tile::draw(RenderWindow &w) {
     w.draw(icon);
     w.draw(flagicon);
 }
+
+
+void Tile::hideTile() {
+    foreground.setTexture(*hidden.getTexture());
+}
+
+void Tile::revealTile() {
+    foreground.setTexture(*revealed.getTexture());
+}
+
+
+
+
+
+
